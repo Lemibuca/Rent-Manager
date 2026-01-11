@@ -13,8 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/adapter-better-sqlite3": "^7.2.0",
-    "@prisma/client": "^7.2.0",
+    "@prisma/client": "6.16.2",
     "better-sqlite3": "^12.5.0",
     "cloudinary": "^2.8.0",
     "cors": "^2.8.5",
@@ -25,6 +24,6 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11",
-    "prisma": "^7.2.0"
+    "prisma": "6.16.2"
   }
 }

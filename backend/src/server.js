@@ -9,7 +9,6 @@ import { prisma } from "./db.js";
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 4000;
 
 app.use(cors());
 app.use(express.json());
@@ -749,6 +748,9 @@ app.post("/dev/reset", async (req, res) => {
 /* =========================
    Start
 ========================= */
+
+const PORT = process.env.PORT || 4000;
+
 app.listen(PORT, () => {
   console.log(`🚀 API running on port ${PORT}`);
 });
