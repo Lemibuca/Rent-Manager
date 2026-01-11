@@ -1,0 +1,51 @@
+// info.text
+src/
+  api/
+    client.js
+  components/
+    Layout.jsx
+    Nav.jsx
+  pages/
+    Dashboard.jsx
+    Units.jsx
+    Tenants.jsx
+    Leases.jsx
+    Invoices.jsx
+    Payments.jsx
+  App.jsx
+  main.jsx
+  styles.css
+
+
+backend/
+├─ prisma/
+│  └─ schema.prisma
+├─ src/
+│  ├─ db.js
+│  ├─ server.js
+│  
+├─ data/
+│  └─ rent.db
+├─ .env
+└─ package.json
+
+
+frontend/
+├─ src/
+│  ├─ api/
+│  │  └─ client.js
+│  ├─ components/
+│  │  ├─ Layout.jsx
+│  │  └─ Nav.jsx
+│  ├─ pages/
+│  │  ├─ Dashboard.jsx
+│  │  ├─ Units.jsx
+│  │  ├─ Tenants.jsx
+│  │  ├─ Leases.jsx
+│  │  ├─ Invoices.jsx
+│  │  └─ MonthlySummary.jsx
+│  ├─ styles.css
+│  ├─ App.jsx
+│  └─ main.jsx
+├─ .env
+└─ package.json

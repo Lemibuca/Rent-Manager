@@ -1,0 +1,299 @@
+:root {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: #111;
+  background: #f6f7f9;
+
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --border: #e7e7e7;
+  --muted: #666;
+  --shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
+
+  --radius: 16px;
+  --radius-sm: 10px;
+
+  --btn: #111;
+  --btn-hover: #222;
+  --danger: #c22;
+
+  --input-border: #ddd;
+  --input-focus: rgba(17, 17, 17, 0.12);
+
+  --gap: 12px;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+h1, h2, h3 { margin: 0 0 10px; }
+p { margin: 0 0 10px; }
+
+.app { min-height: 100vh; }
+.main { max-width: 1100px; margin: 24px auto; padding: 0 16px; }
+
+/* ---------------------------
+   NAV
+---------------------------- */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 14px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 800; letter-spacing: 0.2px; }
+.links { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ---------------------------
+   CARD
+---------------------------- */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  box-shadow: var(--shadow);
+}
+
+/* ---------------------------
+   INPUTS / BUTTONS
+---------------------------- */
+input, select, textarea, button {
+  font: inherit;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--input-border);
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: #bbb;
+  box-shadow: 0 0 0 3px var(--input-focus);
+}
+
+label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+button {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--btn);
+  color: white;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+  transition: transform 0.03s ease, opacity 0.12s ease, background 0.12s ease;
+}
+
+button:hover { background: var(--btn-hover); }
+button:active { transform: translateY(1px); }
+button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+button.danger { background: var(--danger); }
+button.danger:hover { opacity: 0.92; }
+
+button.ghost {
+  background: transparent;
+  color: #111;
+  border: 1px solid var(--input-border);
+}
+button.ghost:hover { background: #f3f3f3; }
+
+/* ---------------------------
+   FORMS (default)
+   - Responsive grid
+   - Avoids the "apretado" issue
+---------------------------- */
+.form {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--gap);
+  margin: 14px 0;
+  align-items: end;
+}
+
+/* If you wrap fields like <div class="field"> ... */
+.field { display: grid; gap: 6px; }
+
+/* Buttons inside forms fill nicely */
+.form button { width: 100%; }
+
+/* Responsive breakpoints */
+@media (max-width: 980px) {
+  .form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .form { grid-template-columns: 1fr; }
+}
+
+/* ---------------------------
+   TABLES
+   - Nice spacing
+   - Scroll on small screens
+---------------------------- */
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 14px;
+  font-size: 14px;
+}
+
+.table th, .table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  font-size: 13px;
+  color: #333;
+  text-transform: none;
+  letter-spacing: 0.2px;
+}
+
+.right { text-align: right; }
+
+/* Optional wrapper for tables on mobile:
+   <div className="tableWrap"><table className="table">...</table></div>
+*/
+.tableWrap { width: 100%; overflow: auto; }
+
+/* ---------------------------
+   TEXT HELPERS
+---------------------------- */
+.muted { color: var(--muted); }
+.error {
+  background: #ffe7e7;
+  border: 1px solid #ffbdbd;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin: 10px 0;
+}
+.ok {
+  background: #e8fff0;
+  border: 1px solid #bff2cf;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  margin: 10px 0;
+}
+
+/* ---------------------------
+   DASHBOARD STATS
+---------------------------- */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr; }
+}
+
+.stat, .stat-click {
+  border: 1px solid #eee;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fafafa;
+}
+
+.label { color: var(--muted); font-size: 13px; }
+.value { font-size: 30px; font-weight: 800; margin-top: 4px; }
+
+.stat-click { cursor: pointer; text-align: left; }
+.stat-click:hover { opacity: 0.95; }
+
+/* ---------------------------
+   ROWS (if you still use them)
+---------------------------- */
+.row {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  flex-wrap: wrap;
+  margin: 14px 0;
+}
+.row > div { display: grid; gap: 6px; }
+
+/* ---------------------------
+   MONTH BAR
+---------------------------- */
+.month-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.month-bar button {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  background: #fafafa;
+  cursor: pointer;
+  color: #111;
+}
+.month-bar button:hover { background: #f0f0f0; }
+
+/* Fix: prevent numeric inputs from being too narrow (cutting numbers) */
+input[type="number"] {
+  min-width: 120px;
+}
+
+/* Due day can be smaller */
+input.dueDay {
+  min-width: 90px;
+}
+
+/* Optional: make sure text stays visible */
+input, select {
+  min-width: 0;
+}
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+input[type="number"] {
+  min-width: 120px;
+}
+
+input.dueDay {
+  min-width: 90px;
+}
+
+/* Prevent labels from overlapping in tight grids */
+.field label {
+  white-space: normal;      /* allow wrapping */
+  line-height: 1.2;
+}
+
+/* Optional: if you prefer single-line labels, use ellipsis instead */
+.field label.oneLine {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Make sure grid items can shrink properly */
+.form > * {
+  min-width: 0;
+}

@@ -1,0 +1,89 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("SQLITE_URL")
+}
+
+model Unit {
+  id        Int      @id @default(autoincrement())
+  code      String   @unique
+  notes     String?
+  status    UnitStatus @default(AVAILABLE)
+  leases    Lease[]
+}
+
+model Tenant {
+  id      Int    @id @default(autoincrement())
+  name    String
+  phone   String?
+  photoUrl String?
+  leases  Lease[]
+}
+
+model Lease {
+  id         Int      @id @default(autoincrement())
+  unitId     Int
+  tenantId   Int
+  startDate  DateTime
+  endDate    DateTime?
+
+  rentAmount Int
+  dueDay     Int      @default(5)
+  active     Boolean  @default(true)
+
+  unit       Unit     @relation(fields: [unitId], references: [id])
+  tenant     Tenant   @relation(fields: [tenantId], references: [id])
+  invoices   Invoice[]
+
+  @@index([unitId])
+  @@index([tenantId])
+  @@index([active])
+  // @@unique([unitId, active]) // optional rule
+}
+
+
+model Invoice {
+  id        Int      @id @default(autoincrement())
+  leaseId   Int
+  period    String
+  dueDate   DateTime
+  amount    Int
+  balance   Int
+  status    InvoiceStatus @default(PENDING)
+
+  lease     Lease    @relation(fields: [leaseId], references: [id])
+  payments  Payment[]
+  @@unique([leaseId, period])
+
+}
+
+model Payment {
+  id        Int      @id @default(autoincrement())
+  invoiceId Int
+  amount    Int
+  method    String
+  paidAt    DateTime @default(now())
+
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id])
+}
+
+enum UnitStatus {
+  AVAILABLE
+  OCCUPIED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PARTIAL
+  PAID
+  OVERDUE
+}
