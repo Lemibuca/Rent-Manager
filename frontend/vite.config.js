@@ -7,7 +7,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      strategies: "generateSW",
       registerType: "autoUpdate",
+      injectRegister: "auto", // 👈 IMPORTANTE para producción
+
       includeAssets: ["pwa-192x192.png", "pwa-512x512.png"],
 
       manifest: {
@@ -26,8 +29,8 @@ export default defineConfig({
       },
 
       devOptions: {
-        enabled: true,           // keep PWA dev on localhost
-        suppressWarnings: true,  // ✅ fixes the glob warning in dev
+        enabled: true,
+        suppressWarnings: true,
       },
     }),
   ],
