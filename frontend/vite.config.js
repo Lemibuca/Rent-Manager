@@ -9,6 +9,7 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       includeAssets: ["pwa-192x192.png", "pwa-512x512.png"],
+
       manifest: {
         name: "Rent Manager",
         short_name: "RentManager",
@@ -19,20 +20,14 @@ export default defineConfig({
         background_color: "#ffffff",
         theme_color: "#111111",
         icons: [
-          {
-            src: "/pwa-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-          {
-            src: "/pwa-512x512.png",
-            sizes: "512x512",
-            type: "image/png",
-          },
+          { src: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+          { src: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
         ],
       },
+
       devOptions: {
-        enabled: true, // IMPORTANT: para que funcione en localhost
+        enabled: true,           // keep PWA dev on localhost
+        suppressWarnings: true,  // ✅ fixes the glob warning in dev
       },
     }),
   ],
