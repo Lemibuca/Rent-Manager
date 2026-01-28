@@ -70,7 +70,7 @@ input, select, textarea, button {
 }
 
 input, select, textarea {
-  width: 100%;
+  width: 90%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--input-border);
@@ -296,5 +296,34 @@ label, legend, .floating-label, .input-label {
 /* Make sure grid items can shrink properly */
 .form > * {
   min-width: 0;
+}
+
+/* ---------------------------------
+   MOBILE FIX: NAV / TABS WRAP
+   (Evita que se choque en iPhone)
+----------------------------------*/
+@media (max-width: 560px) {
+  .nav {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Los links/tabs bajan de línea y ocupan todo el ancho */
+  .links {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* Opcional: que los botones/links se vean como chips */
+  .links a,
+  .links button {
+    flex: 0 0 auto;
+  }
+}
+.card {
+  width: 90%;
+  max-width: 90%;
 }
 
