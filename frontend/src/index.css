@@ -3,7 +3,10 @@
   line-height: 1.5;
   font-weight: 400;
 
+  /* Enable light + dark mode */
   color-scheme: light dark;
+
+  /* Default DARK mode */
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
@@ -13,6 +16,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ---------- Links ---------- */
 a {
   font-weight: 500;
   color: #646cff;
@@ -22,6 +26,7 @@ a:hover {
   color: #535bf2;
 }
 
+/* ---------- Body ---------- */
 body {
   margin: 0;
   display: flex;
@@ -30,11 +35,13 @@ body {
   min-height: 100vh;
 }
 
+/* ---------- Headings ---------- */
 h1 {
   font-size: 3.2em;
   line-height: 1.1;
 }
 
+/* ---------- Buttons ---------- */
 button {
   border-radius: 8px;
   border: 1px solid transparent;
@@ -43,6 +50,7 @@ button {
   font-weight: 500;
   font-family: inherit;
   background-color: #1a1a1a;
+  color: rgba(255, 255, 255, 0.87);
   cursor: pointer;
   transition: border-color 0.25s;
 }
@@ -54,15 +62,62 @@ button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
 }
 
+/* ---------- 🔑 INPUT FIX ---------- */
+input,
+textarea,
+select {
+  font: inherit;
+  padding: 0.6em 0.8em;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+
+  /* Light mode defaults */
+  background-color: #ffffff;
+  color: #111111;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #888;
+}
+
+/* ---------- LIGHT MODE ---------- */
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;
   }
+
   a:hover {
     color: #747bff;
   }
+
   button {
     background-color: #f9f9f9;
+    color: #213547;
+  }
+
+  input,
+  textarea,
+  select {
+    background-color: #ffffff;
+    color: #111111;
+    border: 1px solid #ccc;
+  }
+}
+
+/* ---------- DARK MODE INPUTS ---------- */
+@media (prefers-color-scheme: dark) {
+  input,
+  textarea,
+  select {
+    background-color: #1a1a1a;
+    color: rgba(255, 255, 255, 0.9);
+    border: 1px solid #333;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: rgba(255, 255, 255, 0.5);
   }
 }
