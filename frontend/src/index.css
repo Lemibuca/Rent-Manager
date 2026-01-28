@@ -106,7 +106,6 @@ textarea::placeholder {
   }
 }
 
-
 /* ---------- DARK MODE INPUTS ---------- */
 @media (prefers-color-scheme: dark) {
   input,
