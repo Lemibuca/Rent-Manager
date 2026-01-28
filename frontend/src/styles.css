@@ -281,9 +281,9 @@ input.dueDay {
 }
 
 /* Prevent labels from overlapping in tight grids */
-.field label {
-  white-space: normal;      /* allow wrapping */
-  line-height: 1.2;
+label, legend, .floating-label, .input-label {
+  color: #888 !important;
+  font-weight: 400 !important;
 }
 
 /* Optional: if you prefer single-line labels, use ellipsis instead */
@@ -297,3 +297,4 @@ input.dueDay {
 .form > * {
   min-width: 0;
 }
+
