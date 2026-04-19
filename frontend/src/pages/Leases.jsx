@@ -177,7 +177,23 @@ export default function Leases() {
       setErr(e2?.response?.data?.message || e2.message);
     }
   };
+  const concludeLease = async (lease) => {
+  const reason =
+    prompt(
+      "Why is this lease being concluded?",
+      "Contract ended or tenant moved out early"
+    ) || "";
 
+  try {
+    await api.post(`/leases/${lease.id}/close`, {
+      conclusionReason: reason,
+    });
+
+    await load();
+  } catch (e) {
+    setErr(e.message || "Failed to conclude lease");
+  }
+  };
   const closeLease = async (id) => {
     if (!confirm("Close this lease?")) return;
     setErr("");
@@ -189,11 +205,33 @@ export default function Leases() {
     }
   };
 
+  const deleteLease = async (lease) => {
+  const ok = confirm(
+    "Are you sure you want to delete this concluded lease? This should only be done if you no longer need the record."
+  );
+
+  if (!ok) return;
+
+  try {
+    await api.del(`/leases/${lease.id}`);
+    await load();
+  } catch (e) {
+    setErr(e.message || "Failed to delete lease");
+  }
+  };
+
   /* =========================
      Contract modal state
   ========================= */
   const [contractOpen, setContractOpen] = useState(false);
   const [selectedLease, setSelectedLease] = useState(null);
+  const [photosOpen, setPhotosOpen] = useState(false);
+  const [photoLease, setPhotoLease] = useState(null);
+  const [photoItems, setPhotoItems] = useState([]);
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoNote, setPhotoNote] = useState("");
+  const [photoType, setPhotoType] = useState("PRE_RENTAL");
+  const [photoPreview, setPhotoPreview] = useState(null);
 
   // Editable contract fields
   const [contract, setContract] = useState({
@@ -212,7 +250,7 @@ export default function Leases() {
     usePurpose: "",
     penaltyPerDay: "",
     depositAmount: "",
-    depositText: "depósito de garantía",
+    depositText: "security deposit",
 
     contractDurationText: "",
     city: "Arequipa",
@@ -240,10 +278,10 @@ export default function Leases() {
       ...c,
       tenantFullName: tenantName || c.tenantFullName,
       contractDurationText:
-        end && start ? `desde ${start} hasta ${end}` : (c.contractDurationText || ""),
+        end && start ? `from ${start} to ${end}` : (c.contractDurationText || ""),
       // Small helper strings
-      propertyDescription: c.propertyDescription || `Unidad: ${lease?.unit?.code ?? lease?.unitId ?? ""}`,
-      usePurpose: c.usePurpose || "vivienda",
+      propertyDescription: c.propertyDescription || `Unit: ${lease?.unit?.code ?? lease?.unitId ?? ""}`,
+      usePurpose: c.usePurpose || "residential",
       penaltyPerDay: c.penaltyPerDay || "",
       depositAmount: c.depositAmount || "",
       // reset signatures for each open (optional)
@@ -257,6 +295,45 @@ export default function Leases() {
   const closeContract = () => {
     setContractOpen(false);
     setSelectedLease(null);
+  };
+
+    const openPhotos = async (lease) => {
+    setErr("");
+    setPhotoLease(lease);
+    setPhotoFile(null);
+    setPhotoNote("");
+    setPhotoType("PRE_RENTAL");
+
+    try {
+      const items = await api.get(`/leases/${lease.id}/inspection-photos`);
+      setPhotoItems(items);
+      setPhotosOpen(true);
+    } catch (e) {
+      setErr(e.message || "Failed to load inspection photos");
+    }
+  };
+
+  const uploadInspectionPhoto = async () => {
+    if (!photoLease || !photoFile) return;
+
+    setErr("");
+    try {
+      const fd = new FormData();
+      fd.append("photo", photoFile);
+      fd.append("note", photoNote);
+      fd.append("type", photoType);
+
+      await api.upload(`/leases/${photoLease.id}/inspection-photos`, fd);
+
+      const items = await api.get(`/leases/${photoLease.id}/inspection-photos`);
+      setPhotoItems(items);
+      setPhotoFile(null);
+      setPhotoNote("");
+      setPhotoType("PRE_RENTAL");
+      await load();
+    } catch (e) {
+      setErr(e.message || "Failed to upload inspection photo");
+    }
   };
 
   const printContract = () => {
@@ -315,7 +392,7 @@ export default function Leases() {
 
           {/* Rent */}
           <div style={{ gridColumn: "span 2" }} className="field">
-            <label className="muted">Rent (S/.)</label>
+            <label className="muted">Rent ($)</label>
             <input
               type="number"
               min="0"
@@ -327,36 +404,34 @@ export default function Leases() {
 
           {/* Due Day */}
           <div className="field" style={{ gridColumn: "span 2" }}>
-          <label className="muted">Due Day</label>
-          <input
-            type="number"
-            min="1"
-            max="28"
-            className="dueDay"
-            value={form.dueDay}
-            onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
-          />
-        </div>
+            <label className="muted">Due Day</label>
+            <input
+              type="number"
+              min="1"
+              max="28"
+              className="dueDay"
+              value={form.dueDay}
+              onChange={(e) => setForm({ ...form, dueDay: e.target.value })}
+            />
+          </div>
 
+          <div className="field" style={{ gridColumn: "span 2" }}>
+            <label className="muted">Start Date</label>
+            <input
+              type="date"
+              value={form.startDate}
+              onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+            />
+          </div>
 
-        <div className="field" style={{ gridColumn: "span 2" }}>
-          <label className="muted">Start Date</label>
-          <input
-            type="date"
-            value={form.startDate}
-            onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-          />
-        </div>
-
-        <div className="field" style={{ gridColumn: "span 2" }}>
-          <label className="muted">End Date</label>
-          <input
-            type="date"
-            value={form.endDate}
-            onChange={(e) => setForm({ ...form, endDate: e.target.value })}
-          />
-        </div>
-
+          <div className="field" style={{ gridColumn: "span 2" }}>
+            <label className="muted">End Date</label>
+            <input
+              type="date"
+              value={form.endDate}
+              onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+            />
+          </div>
 
           <div style={{ gridColumn: "span 2", display: "flex", alignItems: "end" }}>
             <button type="submit" style={{ width: "100%" }}>Create Lease</button>
@@ -365,48 +440,207 @@ export default function Leases() {
       </form>
 
       {/* Table */}
-<div className="tableWrap">
-  <table className="table">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Unit</th>
-        <th>Tenant</th>
-        <th>Rent</th>
-        <th>Due Day</th>
-        <th>Start</th>
-        <th>End</th>
-        <th>Active</th>
-        <th></th>
-      </tr>
-    </thead>
+      <div className="tableWrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Unit</th>
+              <th>Tenant</th>
+              <th>Rent</th>
+              <th>Due Day</th>
+              <th>Start</th>
+              <th>End</th>
+              <th>Active</th>
+              <th></th>
+            </tr>
+          </thead>
 
-    <tbody>
-      {leases.map((l) => (
-        <tr key={l.id}>
-          <td>{l.id}</td>
-          <td>{l.unit?.code ?? l.unitId}</td>
-          <td>{l.tenant?.name ?? l.tenantId}</td>
-          <td>S/ {Number(l.rentAmount).toFixed(2)}</td>
-          <td>{l.dueDay}</td>
-          <td>{l.startDate ? String(l.startDate).slice(0, 10) : "-"}</td>
-          <td>{l.endDate ? String(l.endDate).slice(0, 10) : "-"}</td>
-          <td>{l.active ? "Yes" : "No"}</td>
-          <td className="right" style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button type="button" onClick={() => openContract(l)}>Contract</button>
-            {l.active && <button type="button" onClick={() => closeLease(l.id)}>Close</button>}
-          </td>
-        </tr>
-      ))}
+          <tbody>
+            {leases.map((l) => (
+              <tr key={l.id}>
+                <td>{l.id}</td>
+                <td>{l.unit?.code ?? l.unitId}</td>
+                <td>{l.tenant?.name ?? l.tenantId}</td>
+                <td>$ {Number(l.rentAmount).toFixed(2)}</td>
+                <td>{l.dueDay}</td>
+                <td>{l.startDate ? String(l.startDate).slice(0, 10) : "-"}</td>
+                <td>{l.endDate ? String(l.endDate).slice(0, 10) : "-"}</td>
+                <td>
+                  {l.active ? "Active" : `Concluded - ${l.conclusionReason || "No reason provided"}`}
+                </td>
+                <td
+                  className="right"
+                  style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}
+                >
+                  <button type="button" onClick={() => openContract(l)}>
+                    Contract
+                  </button>
 
-      {leases.length === 0 && (
-        <tr><td colSpan="9" className="muted">No leases yet.</td></tr>
-      )}
-    </tbody>
-  </table>
-</div>
+                  <button type="button" className="ghost" onClick={() => openPhotos(l)}>
+                    Photos ({l.inspectionPhotos?.length || 0})
+                  </button>
+
+                  {l.active ? (
+                    <button type="button" onClick={() => concludeLease(l)}>
+                      Conclude
+                    </button>
+                  ) : (
+                    <button type="button" className="danger" onClick={() => deleteLease(l)}>
+                      Delete
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+
+            {leases.length === 0 && (
+              <tr><td colSpan="9" className="muted">No leases yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
       {/* Contract Modal */}
+            <Modal
+        open={photosOpen}
+        title={`Inspection Photos${photoLease ? ` - Unit ${photoLease.unit?.code ?? photoLease.unitId}` : ""}`}
+        onClose={() => setPhotosOpen(false)}
+      >
+        <div style={{ display: "grid", gap: 14 }}>
+          {photoLease?.unit?.coverPhotoUrl && (
+            <div>
+              <div className="muted" style={{ marginBottom: 8 }}>Unit cover photo</div>
+              <img
+                src={photoLease.unit.coverPhotoUrl}
+                alt={photoLease.unit?.code || "Unit"}
+                style={{
+                  width: 220,
+                  maxWidth: "100%",
+                  height: 140,
+                  objectFit: "cover",
+                  borderRadius: 12,
+                  border: "1px solid #ddd",
+                }}
+              />
+            </div>
+          )}
+
+          <div className="card" style={{ padding: 14 }}>
+            <h3 style={{ marginTop: 0 }}>Add Property Photos</h3>
+            <p className="muted" style={{ marginBottom: 12 }}>
+              Upload move-in or move-out condition photos for walls, doors, kitchen, bathroom, floor, and windows.
+            </p>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setPhotoFile(e.target.files?.[0] || null)}
+              />
+
+              <select value={photoType} onChange={(e) => setPhotoType(e.target.value)}>
+                <option value="PRE_RENTAL">Pre-rental / Move-in</option>
+                <option value="POST_RENTAL">Post-rental / Move-out</option>
+              </select>
+
+              <input
+                placeholder="Optional note (example: living room wall condition)"
+                value={photoNote}
+                onChange={(e) => setPhotoNote(e.target.value)}
+              />
+
+              <button type="button" onClick={uploadInspectionPhoto}>
+                Upload Photo
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <h3 style={{ marginBottom: 10 }}>Gallery</h3>
+
+            {photoItems.length === 0 ? (
+              <div className="muted">No inspection photos yet.</div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                  gap: 12,
+                }}
+              >
+                {photoItems.map((item) => (
+                  <div
+                    key={item.id}
+                    style={{
+                      border: "1px solid #eee",
+                      borderRadius: 12,
+                      padding: 10,
+                      background: "#fafafa",
+                    }}
+                  >
+                    <img
+                      src={item.photoUrl}
+                      alt={item.note || item.type}
+                      onClick={() => setPhotoPreview(item.photoUrl)}
+                      style={{
+                        width: "100%",
+                        height: 130,
+                        objectFit: "cover",
+                        borderRadius: 10,
+                        cursor: "pointer",
+                        border: "1px solid #ddd",
+                      }}
+                    />
+                    <div style={{ marginTop: 8, fontSize: 13, fontWeight: 700 }}>
+                      {item.type === "PRE_RENTAL" ? "Pre-rental" : "Post-rental"}
+                    </div>
+                    <div className="muted" style={{ fontSize: 13 }}>
+                      {item.note || "No note"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </Modal>
+
+      {photoPreview && (
+        <div
+          onClick={() => setPhotoPreview(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.35)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 12000,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#fff",
+              padding: 10,
+              borderRadius: 14,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+            }}
+          >
+            <img
+              src={photoPreview}
+              alt="Inspection preview"
+              style={{
+                width: "min(90vw, 700px)",
+                maxHeight: "85vh",
+                objectFit: "contain",
+                borderRadius: 12,
+              }}
+            />
+          </div>
+        </div>
+      )}
       <Modal open={contractOpen} title="Lease Contract (Peru Format)" onClose={closeContract}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
           <div>
@@ -505,99 +739,99 @@ export default function Leases() {
               value={contract.contractDurationText}
               onChange={(e) => setContract({ ...contract, contractDurationText: e.target.value })}
               style={{ width: "100%" }}
-              placeholder="e.g. 12 meses / desde 2026-01-01 hasta 2026-12-31"
+              placeholder="e.g. 12 months / from 2026-01-01 to 2026-12-31"
             />
           </div>
         </div>
 
         {/* Printable Contract Body */}
         <div style={{ marginTop: 18, padding: 14, border: "1px solid #eee", borderRadius: 12 }}>
-          <h3 style={{ marginTop: 0 }}>CONTRATO DE ARRENDAMIENTO</h3>
+          <h3 style={{ marginTop: 0 }}>RENTAL AGREEMENT</h3>
 
           <p style={{ lineHeight: 1.45 }}>
-            Consta por el presente documento el <b>CONTRATO DE ARRENDAMIENTO DE BIEN INMUEBLE</b> que celebran, de una parte,
-            el señor <b>{contract.landlordName}</b>, identificado con DNI Nº <b>{contract.landlordDni}</b>, con domicilio en{" "}
-            <b>{contract.landlordAddress}</b>, en adelante el <b>ARRENDADOR</b>, y de otra parte{" "}
-            <b>{contract.tenantFullName || "_________________________"}</b>, identificado DNI Nº{" "}
-            <b>{contract.tenantDni || "___________"}</b>, con domicilio{" "}
-            <b>{contract.tenantAddress || "_________________________"}</b>, distrito de{" "}
-            <b>{contract.tenantDistrict || "__________"}</b>, provincia{" "}
-            <b>{contract.tenantProvince || "__________"}</b> y departamento de{" "}
-            <b>{contract.tenantDepartment || "__________"}</b>, en adelante el <b>ARRENDATARIO</b>, de acuerdo con los siguientes términos y condiciones:
+            This document is the <b>RENTAL AGREEMENT FOR REAL ESTATE</b> entered into by, on the one hand,
+            Mr. <b>{contract.landlordName}</b>, identified with DNI No. <b>{contract.landlordDni}</b>, domiciled at{" "}
+            <b>{contract.landlordAddress}</b>, hereinafter the <b>LANDLORD</b>, and on the other hand{" "}
+            <b>{contract.tenantFullName || "_________________________"}</b>, identified with DNI No.{" "}
+            <b>{contract.tenantDni || "___________"}</b>, domiciled at{" "}
+            <b>{contract.tenantAddress || "_________________________"}</b>, district of{" "}
+            <b>{contract.tenantDistrict || "__________"}</b>, province of{" "}
+            <b>{contract.tenantProvince || "__________"}</b>, department of{" "}
+            <b>{contract.tenantDepartment || "__________"}</b>, hereinafter the <b>TENANT</b>, under the following terms and conditions:
           </p>
 
-          <p><b>PRIMERA: ANTECEDENTES</b><br />
-            El ARRENDADOR es propietario del/ de los bien(es) inmueble(s) que se describe a continuación:{" "}
+          <p><b>FIRST: BACKGROUND</b><br />
+            The LANDLORD is the owner of the property(ies) described as:{" "}
             <b>{contract.propertyDescription || "_________________________"}</b>.
           </p>
 
-          <p><b>SEGUNDA: OBJETO DEL CONTRATO</b><br />
-            2.1 Por el presente contrato, el ARRENDADOR otorga en arrendamiento el/los INMUEBLE(S) a favor del ARRENDATARIO, el cual declara conocerlo plenamente.<br />
-            2.2 El ARRENDATARIO se obliga a pagar la renta en la forma y oportunidad pactada en la cláusula Tercera.<br />
-            2.3 Las partes declaran que el/los INMUEBLE(S) serán destinados al uso:{" "}
+          <p><b>SECOND: OBJECT OF THE CONTRACT</b><br />
+            2.1 By this contract, the LANDLORD leases the property(ies) to the TENANT, who declares to know it fully.<br />
+            2.2 The TENANT commits to pay the rent as agreed in Clause Three.<br />
+            2.3 The parties declare that the property(ies) will be used for:{" "}
             <b>{contract.usePurpose || "_________________________"}</b>.
           </p>
 
-          <p><b>TERCERA: DE LA RENTA</b><br />
-            3.1 La renta mensual pactada es de{" "}
-            <b>S/ {selectedLease?.rentAmount ?? "_____"}</b>{" "}
-            (__________), pagaderos en forma adelantada el día{" "}
-            <b>{selectedLease?.dueDay ?? "___"}</b> de cada mes. De no cumplirse el pago en la fecha pactada se multará la cantidad de{" "}
-            <b>{contract.penaltyPerDay || "_____"}</b> soles por cada día de retraso.<br />
-            3.2 Con ocasión de la firma del presente documento, el ARRENDATARIO entrega al ARRENDADOR la suma de{" "}
+          <p><b>THIRD: RENT</b><br />
+            3.1 The agreed monthly rent is{" "}
+            <b>$ {selectedLease?.rentAmount ?? "_____"}</b>{" "}
+            (__________), payable in advance on day{" "}
+            <b>{selectedLease?.dueDay ?? "___"}</b> of each month. Late payments will incur a penalty of{" "}
+            <b>{contract.penaltyPerDay || "_____"}</b> soles per day.<br />
+            3.2 Upon signing this document, the TENANT gives the LANDLORD the amount of{" "}
             <b>{contract.depositAmount || "_________________________"}</b>{" "}
-            en calidad de <b>{contract.depositText}</b>.
+            as <b>{contract.depositText}</b>.
           </p>
 
-          <p><b>CUARTA: DURACIÓN DEL ARRENDAMIENTO</b><br />
-            El plazo de duración del presente contrato es de{" "}
-            <b>{contract.contractDurationText || "_________________________"}</b>, contado a partir de la fecha de suscripción del presente documento. Podrá ser renovado por acuerdo entre las partes.
+          <p><b>FOURTH: DURATION OF THE LEASE</b><br />
+            The lease term is{" "}
+            <b>{contract.contractDurationText || "_________________________"}</b>, commencing from the signing date. It may be renewed by agreement of the parties.
           </p>
 
-          <p><b>QUINTA: SOBRE LA CONSERVACIÓN</b><br />
-            El ARRENDATARIO está obligado a conservar y cuidar el/los INMUEBLE(S) arrendado(s), asumiendo gastos por descuido, negligencia, maltrato y/o uso diario, así como cualquier deterioro anormal.
+          <p><b>FIFTH: MAINTENANCE</b><br />
+            The TENANT must maintain and care for the leased property, and is responsible for costs due to negligence, misuse, or abnormal wear.
           </p>
 
-          <p><b>SEXTA: SOBRE LAS MEJORAS</b><br />
-            Toda mejora efectuada por el ARRENDATARIO quedará en beneficio del ARRENDADOR, sin reembolso.
+          <p><b>SIXTH: IMPROVEMENTS</b><br />
+            Any improvements made by the TENANT benefit the LANDLORD without reimbursement.
           </p>
 
-          <p><b>SÉPTIMA: SOBRE EL ESTADO DEL INMUEBLE</b><br />
-            El ARRENDADOR declara que el/los INMUEBLE(S) se entrega(n) en perfecto estado.
+          <p><b>SEVENTH: CONDITION OF THE PROPERTY</b><br />
+            The LANDLORD declares that the property is delivered in perfect condition.
           </p>
 
-          <p><b>OCTAVA: PAGO DE SERVICIOS</b><br />
-            Serán de cuenta del ARRENDATARIO los pagos mensuales de servicios (electricidad, teléfono, internet, cable). El ARRENDADOR pagará el servicio de agua.
+          <p><b>EIGHTH: UTILITY PAYMENTS</b><br />
+            Monthly service payments (electricity, telephone, internet, cable) are the TENANT’s responsibility. The LANDLORD pays water.
           </p>
 
-          <p><b>NOVENA: SOBRE LA RESOLUCIÓN</b><br />
-            El contrato podrá resolverse si el ARRENDATARIO incumple con el pago de un mes de renta.
+          <p><b>NINTH: TERMINATION</b><br />
+            The contract can be terminated if the TENANT fails to pay one month’s rent.
           </p>
 
-          <p><b>NOVENO PRIMERA: PROHIBICIÓN DE CEDER O SUBARRENDAR</b><br />
-            El ARRENDATARIO se compromete a no traspasar o subarrendar sin autorización escrita del ARRENDADOR.
+          <p><b>NINTH FIRST: NO ASSIGNMENT OR SUBLEASE</b><br />
+            The TENANT agrees not to transfer or sublease without written consent from the LANDLORD.
           </p>
 
-          <p><b>NOVENO SEGUNDA: GARANTÍA</b><br />
-            Depósito de garantía por la suma de <b>{contract.depositAmount || "_________________________"}</b>.
+          <p><b>NINTH SECOND: SECURITY DEPOSIT</b><br />
+            Security deposit amount: <b>{contract.depositAmount || "_________________________"}</b>.
           </p>
 
-          <p><b>NOVENO TERCERA: LEGISLACIÓN Y JURISDICCIÓN</b><br />
-            Se aplica la legislación de la República del Perú. En caso de litigio, las partes se someten a la jurisdicción de los jueces y tribunales de la provincia y departamento de Arequipa.
+          <p><b>NINTH THIRD: LAW AND JURISDICTION</b><br />
+            Peruvian law applies. For disputes, parties submit to courts in the province and department of Arequipa.
           </p>
 
           <p style={{ marginTop: 18 }}>
-            En señal de conformidad, las partes suscriben el presente documento.
+            In agreement, the parties sign this document.
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 18 }}>
             <div>
-              <b>EL ARRENDADOR</b><br />
+              <b>LANDLORD</b><br />
               NAME: {contract.landlordName}<br />
               DNI: {contract.landlordDni}
             </div>
             <div>
-              <b>EL ARRENDATARIO</b><br />
+              <b>TENANT</b><br />
               NAME: {contract.tenantFullName || "________________"}<br />
               DNI: {contract.tenantDni || "________________"}
             </div>

@@ -25,6 +25,23 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+async function uploadImageToCloudinary(file, folder) {
+  if (!file) {
+    throw new Error("No file uploaded.");
+  }
+
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.mimetype)) {
+    throw new Error("Only JPG, PNG, or WEBP images are allowed.");
+  }
+
+  const b64 = file.buffer.toString("base64");
+  const dataUri = `data:${file.mimetype};base64,${b64}`;
+
+  const result = await cloudinary.uploader.upload(dataUri, { folder });
+  return result.secure_url;
+}
+
 /* =========================
    Helpers
 ========================= */
@@ -186,16 +203,52 @@ app.get("/units", async (req, res) => {
 app.post("/units", async (req, res) => {
   try {
     const { code, notes } = req.body;
-    if (!code?.trim()) return res.status(400).json({ error: "code required" });
+
+    if (!code?.trim()) {
+      return res.status(400).json({ error: "code required" });
+    }
 
     const unit = await prisma.unit.create({
-      data: { code: code.trim(), notes: notes?.trim() || null },
+      data: {
+        code: code.trim(),
+        notes: notes?.trim() || null,
+      },
     });
 
     res.json(unit);
   } catch (e) {
-    console.error(e);
+    console.error("POST /units", e);
     res.status(500).json({ error: e.message || "Failed to create unit" });
+  }
+});
+// Create unit
+// Upload unit cover photo
+app.post("/units/:id/photo", upload.single("photo"), async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({ ok: false, message: "Invalid unit id." });
+    }
+
+    const photoUrl = await uploadImageToCloudinary(req.file, "rent-manager/units");
+
+    const updated = await prisma.unit.update({
+      where: { id },
+      data: { coverPhotoUrl: photoUrl },
+    });
+
+    return res.json({ ok: true, unit: updated });
+  } catch (err) {
+    console.error("Upload unit photo error:", err);
+
+    if (err?.code === "P2025") {
+      return res.status(404).json({ ok: false, message: "Unit not found." });
+    }
+
+    return res.status(500).json({
+      ok: false,
+      message: err?.message || "Failed to upload unit photo.",
+    });
   }
 });
 
@@ -281,26 +334,14 @@ app.post("/tenants/:id/photo", upload.single("photo"), async (req, res) => {
       });
     }
 
-    const allowed = ["image/jpeg", "image/png", "image/webp"];
-    if (!allowed.includes(req.file.mimetype)) {
-      return res.status(400).json({
-        ok: false,
-        message: "Only JPG, PNG, or WEBP images are allowed.",
-      });
-    }
-
-    const b64 = req.file.buffer.toString("base64");
-    const dataUri = `data:${req.file.mimetype};base64,${b64}`;
-
-    const result = await cloudinary.uploader.upload(dataUri, {
-      folder: "rent-manager/tenants",
-    });
+    const photoUrl = await uploadImageToCloudinary(req.file, "rent-manager/tenants");
 
     const updated = await prisma.tenant.update({
       where: { id },
-      data: { photoUrl: result.secure_url },
+      data: { photoUrl },
       select: { id: true, name: true, phone: true, photoUrl: true },
     });
+
 
     return res.json({ ok: true, tenant: updated });
   } catch (err) {
@@ -350,7 +391,13 @@ app.delete("/tenants/:id", async (req, res) => {
 app.get("/leases", async (req, res) => {
   try {
     const leases = await prisma.lease.findMany({
-      include: { unit: true, tenant: true },
+      include: {
+        unit: true,
+        tenant: true,
+        inspectionPhotos: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
       orderBy: { id: "asc" },
     });
     res.json(leases);
@@ -426,20 +473,85 @@ app.post("/leases", async (req, res) => {
     res.status(500).json({ error: e.message || "Failed to create lease" });
   }
 });
+// List inspection photos for one lease
+app.get("/leases/:id/inspection-photos", async (req, res) => {
+  try {
+    const leaseId = Number(req.params.id);
+    if (!Number.isInteger(leaseId)) {
+      return res.status(400).json({ ok: false, message: "Invalid lease id." });
+    }
+
+    const photos = await prisma.leaseInspectionPhoto.findMany({
+      where: { leaseId },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(photos);
+  } catch (err) {
+    console.error("GET /leases/:id/inspection-photos", err);
+    res.status(500).json({ ok: false, message: "Failed to load inspection photos." });
+  }
+});
+
+// Upload inspection photo for one lease
+app.post("/leases/:id/inspection-photos", upload.single("photo"), async (req, res) => {
+  try {
+    const leaseId = Number(req.params.id);
+    const note = req.body.note?.trim() || null;
+    const type = req.body.type === "POST_RENTAL" ? "POST_RENTAL" : "PRE_RENTAL";
+
+    if (!Number.isInteger(leaseId)) {
+      return res.status(400).json({ ok: false, message: "Invalid lease id." });
+    }
+
+    const lease = await prisma.lease.findUnique({ where: { id: leaseId } });
+    if (!lease) {
+      return res.status(404).json({ ok: false, message: "Lease not found." });
+    }
+
+    const photoUrl = await uploadImageToCloudinary(req.file, "rent-manager/lease-inspections");
+
+    const created = await prisma.leaseInspectionPhoto.create({
+      data: {
+        leaseId,
+        photoUrl,
+        note,
+        type,
+      },
+    });
+
+    res.json({ ok: true, photo: created });
+  } catch (err) {
+    console.error("POST /leases/:id/inspection-photos", err);
+    res.status(500).json({
+      ok: false,
+      message: err?.message || "Failed to upload inspection photo.",
+    });
+  }
+});
 
 // Close lease
 app.post("/leases/:id/close", async (req, res) => {
   try {
     const id = parseIntStrict(req.params.id, "id");
+    const conclusionReason = req.body?.conclusionReason?.trim() || "Concluded";
 
     const lease = await prisma.lease.findUnique({ where: { id } });
-    if (!lease) return res.status(404).json({ error: "Lease not found" });
+    if (!lease) {
+      return res.status(404).json({ error: "Lease not found" });
+    }
 
-    if (!lease.active) return res.json({ message: "Lease already closed" });
+    if (!lease.active) {
+      return res.json({ message: "Lease already concluded" });
+    }
 
-    await prisma.lease.update({
+    const updatedLease = await prisma.lease.update({
       where: { id },
-      data: { active: false },
+      data: {
+        active: false,
+        concludedAt: new Date(),
+        conclusionReason,
+      },
     });
 
     await prisma.unit.update({
@@ -447,12 +559,75 @@ app.post("/leases/:id/close", async (req, res) => {
       data: { status: "AVAILABLE" },
     });
 
-    res.json({ message: "Lease closed" });
+    res.json({
+      message: "Lease concluded successfully",
+      lease: updatedLease,
+    });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: "Failed to close lease" });
+    res.status(500).json({ error: "Failed to conclude lease" });
   }
-});
+  });
+
+app.delete("/leases/:id", async (req, res) => {
+  try {
+    const id = parseIntStrict(req.params.id, "id");
+
+    const lease = await prisma.lease.findUnique({
+      where: { id },
+      include: {
+        invoices: true,
+        inspectionPhotos: true,
+      },
+    });
+
+    if (!lease) {
+      return res.status(404).json({ ok: false, message: "Lease not found." });
+    }
+
+    if (lease.active) {
+      return res.status(400).json({
+        ok: false,
+        message: "You must conclude the lease before deleting it.",
+      });
+    }
+
+    // 1. Delete payments linked to invoices of this lease
+    await prisma.payment.deleteMany({
+      where: {
+        invoice: {
+          leaseId: id,
+        },
+      },
+    });
+
+    // 2. Delete invoices linked to this lease
+    await prisma.invoice.deleteMany({
+      where: { leaseId: id },
+    });
+
+    // 3. Delete inspection photos linked to this lease
+    await prisma.leaseInspectionPhoto.deleteMany({
+      where: { leaseId: id },
+    });
+
+    // 4. Delete the lease itself
+    await prisma.lease.delete({
+      where: { id },
+    });
+
+    res.json({
+      ok: true,
+      message: "Lease and all linked records deleted successfully.",
+    });
+  } catch (e) {
+    console.error("DELETE /leases/:id", e);
+    res.status(500).json({
+      ok: false,
+      message: e.message || "Failed to delete lease.",
+    });
+  }
+  });
 
 /* =========================
    Invoices
@@ -734,6 +909,7 @@ app.post("/dev/reset", async (req, res) => {
     // Orden importante por llaves foráneas (FK)
     await prisma.payment.deleteMany({});
     await prisma.invoice.deleteMany({});
+    await prisma.leaseInspectionPhoto.deleteMany({});
     await prisma.lease.deleteMany({});
     await prisma.tenant.deleteMany({});
     await prisma.unit.deleteMany({});

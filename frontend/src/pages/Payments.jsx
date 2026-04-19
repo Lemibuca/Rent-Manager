@@ -2,9 +2,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api/client.js";
 
-const PEN = new Intl.NumberFormat("es-PE", {
+const PEN = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "PEN",
+  currency: "USD",
   minimumFractionDigits: 2,
 });
 const money = (n) => PEN.format(Number(n || 0));
@@ -23,7 +23,7 @@ export default function Payments() {
   const load = async () => {
     setErr("");
     try {
-      // trae pendientes para pagar rápido
+      // get pending invoices to pay quickly
       const data = await api.get("/invoices?status=PENDING");
       setInvoices(data);
     } catch (e) {
@@ -56,7 +56,7 @@ export default function Payments() {
   return (
     <div className="card">
       <h1>Payments</h1>
-      <p className="muted">Registra pagos (manual) y actualiza balances.</p>
+      <p className="muted">Record payments (manual) and update balances.</p>
 
       {err && <div className="error">{err}</div>}
       {msg && <div className="ok">{msg}</div>}
@@ -70,8 +70,8 @@ export default function Payments() {
           <option value="">Select invoice</option>
 
           {invoices.map((i) => {
-            const tenantName = i?.lease?.tenant?.name || "Sin tenant";
-            const unitCode = i?.lease?.unit?.code || "Sin unit";
+            const tenantName = i?.lease?.tenant?.name || "No tenant";
+            const unitCode = i?.lease?.unit?.code || "No unit";
 
             return (
               <option key={i.id} value={i.id}>
@@ -84,7 +84,7 @@ export default function Payments() {
         <input
           type="number"
           min="1"
-          placeholder="Amount (S/)"
+          placeholder="Amount ($)"
           value={form.amount}
           onChange={(e) => setForm({ ...form, amount: e.target.value })}
           required

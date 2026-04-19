@@ -9,10 +9,10 @@ function currentPeriod() {
   return `${y}-${m}`;
 }
 
-// ✅ Soles formatter (PEN)
-const PEN = new Intl.NumberFormat("es-PE", {
+// ✅ (PEN)
+const PEN = new Intl.NumberFormat("en-US", {
   style: "currency",
-  currency: "PEN",
+  currency: "USD",
   minimumFractionDigits: 2,
 });
 const money = (n) => PEN.format(Number(n || 0));
@@ -51,7 +51,7 @@ export default function MonthlySummary() {
   return (
     <div className="card">
       <h1>Monthly Summary</h1>
-      <p className="muted">Resumen del mes: quién pagó y quién debe.</p>
+      <p className="muted">Summary for the month: who paid and who owes.</p>
 
       <div className="row">
         <div>

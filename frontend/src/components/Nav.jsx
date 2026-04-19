@@ -12,7 +12,9 @@ export default function Nav() {
 
   return (
     <nav className="nav">
-      <div className="brand">🏠 Rent Manager</div>
+      <div className="brand" style={{ fontSize: "30px" }}>
+        🏠 Rent Manager
+      </div>
       <div className="links">
         <NavLink to="/" style={linkStyle}>Dashboard</NavLink>
         <NavLink to="/units" style={linkStyle}>Units</NavLink>

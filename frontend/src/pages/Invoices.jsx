@@ -1,83 +1,86 @@
 // src/pages/Invoices.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { api } from "../api/client.js";
 import { useSearchParams } from "react-router-dom";
 
-function currentPeriod() {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  return `${y}-${m}`;
+function getCurrentPeriod() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
-// ✅ Soles formatter (Perú)
+// ✅ PEN currency formatter (Peru)
 const PEN = new Intl.NumberFormat("es-PE", {
   style: "currency",
   currency: "PEN",
   minimumFractionDigits: 2,
 });
-const money = (n) => PEN.format(Number(n || 0));
+const formatMoney = (value) => PEN.format(Number(value || 0));
 
 export default function Invoices() {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [period, setPeriod] = useState(
-    searchParams.get("period") || currentPeriod()
-  );
+  const [period, setPeriod] = useState(searchParams.get("period") || getCurrentPeriod());
   const [status, setStatus] = useState(searchParams.get("status") || "");
 
-  const [items, setItems] = useState([]);
-  const [err, setErr] = useState("");
-  const [msg, setMsg] = useState("");
+  const [invoices, setInvoices] = useState([]);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
 
+  // Sync local state from URL query parameters
   useEffect(() => {
-    const p = searchParams.get("period");
-    const s = searchParams.get("status");
+    const urlPeriod = searchParams.get("period");
+    const urlStatus = searchParams.get("status");
 
-    if (p !== null && p !== period) setPeriod(p);
-    if (s !== null && s !== status) setStatus(s);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
-
-  useEffect(() => {
-    const sp = new URLSearchParams();
-    if (period) sp.set("period", period);
-    if (status) sp.set("status", status);
-    setSearchParams(sp, { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [period, status]);
-
-  const query = useMemo(() => {
-    const qs = new URLSearchParams();
-    if (period) qs.set("period", period);
-    if (status) qs.set("status", status);
-    return `?${qs.toString()}`;
-  }, [period, status]);
-
-  const load = async () => {
-    setErr("");
-    setMsg("");
-    try {
-      setItems(await api.get(`/invoices${query}`));
-    } catch (e) {
-      setErr(e.message);
+    if (urlPeriod !== null && urlPeriod !== period) {
+      setPeriod(urlPeriod);
     }
-  };
+    if (urlStatus !== null && urlStatus !== status) {
+      setStatus(urlStatus);
+    }
+  }, [searchParams, period, status]);
+
+  // Sync URL query parameters from local state
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (period) params.set("period", period);
+    if (status) params.set("status", status);
+    setSearchParams(params, { replace: true });
+  }, [period, status, setSearchParams]);
+
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    if (period) params.set("period", period);
+    if (status) params.set("status", status);
+    const query = params.toString();
+    return query ? `?${query}` : "";
+  }, [period, status]);
+
+  const loadInvoices = useCallback(async () => {
+    setError("");
+    setMessage("");
+    try {
+      const fetched = await api.get(`/invoices${queryString}`);
+      setInvoices(fetched);
+    } catch (e) {
+      setError(e.message);
+    }
+  }, [queryString]);
 
   useEffect(() => {
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
+    loadInvoices();
+  }, [loadInvoices]);
 
-  const generateForPeriod = async () => {
-    setErr("");
-    setMsg("");
+  const generateInvoicesForPeriod = async () => {
+    setError("");
+    setMessage("");
     try {
       await api.post(`/invoices/generate?period=${period}`, {});
-      setMsg(`Invoices generated for ${period} ✅`);
-      await load();
+      setMessage(`Invoices generated for ${period} ✅`);
+      await loadInvoices();
     } catch (e) {
-      setErr(e.message);
+      setError(e.message);
     }
   };
 
@@ -106,11 +109,11 @@ export default function Invoices() {
           </select>
         </div>
 
-        <button onClick={generateForPeriod}>Generate for period</button>
+        <button onClick={generateInvoicesForPeriod}>Generate for period</button>
       </div>
 
-      {err && <div className="error">{err}</div>}
-      {msg && <div className="ok">{msg}</div>}
+      {error && <div className="error">{error}</div>}
+      {message && <div className="ok">{message}</div>}
 
       <table className="table">
         <thead>
@@ -125,26 +128,22 @@ export default function Invoices() {
           </tr>
         </thead>
         <tbody>
-          {items.map((i) => (
-            <tr key={i.id}>
-              <td>{i.id}</td>
-
-              {/* ✅ LeaseId + Tenant name */}
+          {invoices.map((invoice) => (
+            <tr key={invoice.id}>
+              <td>{invoice.id}</td>
               <td>
-                {i.leaseId}
-                {i.lease?.tenant?.name ? ` — ${i.lease.tenant.name}` : ""}
-
+                {invoice.leaseId}
+                {invoice.lease?.tenant?.name ? ` — ${invoice.lease.tenant.name}` : ""}
               </td>
-
-              <td>{i.period}</td>
-              <td>{new Date(i.dueDate).toLocaleDateString("es-PE")}</td>
-              <td>{money(i.amount)}</td>
-              <td>{money(i.balance)}</td>
-              <td>{i.status}</td>
+              <td>{invoice.period}</td>
+              <td>{new Date(invoice.dueDate).toLocaleDateString("es-PE")}</td>
+              <td>{formatMoney(invoice.amount)}</td>
+              <td>{formatMoney(invoice.balance)}</td>
+              <td>{invoice.status}</td>
             </tr>
           ))}
 
-          {items.length === 0 && (
+          {invoices.length === 0 && (
             <tr>
               <td colSpan="7" className="muted">
                 No invoices.
